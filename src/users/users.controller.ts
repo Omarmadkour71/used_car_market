@@ -8,24 +8,53 @@ import {
   Param,
   Query,
   NotFoundException,
-  UseInterceptors,
-  ClassSerializerInterceptor,
+  Session,
 } from '@nestjs/common';
 import { createUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { UserDto } from './dtos/user.dto';
 import { UsersService } from './users.service';
-import { SerializeInterceptor } from 'src/interceptors/serialize.interceptor';
+import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { AuthService } from './auth.service';
+import { CurrentUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
+@Serialize(UserDto)
 export class UsersController {
-  constructor(private userService: UsersService) {}
+  constructor(
+    private userService: UsersService,
+    private authService: AuthService,
+  ) {}
 
   @Post('/signup')
-  createUser(@Body() body: createUserDto) {
-    return this.userService.create(body.email, body.password);
+  async createUser(@Body() body: createUserDto, @Session() session: any) {
+    const user = await this.authService.signup(body.email, body.password);
+    session.userId = user.id;
+    return user;
   }
 
-  @UseInterceptors(SerializeInterceptor)
+  @Get('/signin')
+  async signin(@Body() body: createUserDto, @Session() session: any) {
+    const user = await this.authService.signin(body.email, body.password);
+    session.userId = user.id;
+    return user;
+  }
+
+  /*   @Get('/myprofile')
+  myProfile(@Session() session: any) {
+    return this.userService.findOne(session.userId);
+  } */
+
+  @Get('/myprofile')
+  myProfile(@CurrentUser() user: UserDto) {
+    return user;
+  }
+
+  @Post('/signout')
+  signout(@Session() session: any) {
+    return (session.userId = null);
+  }
+
   @Get('/:id')
   async findUser(@Param('id') id: string) {
     const user = await this.userService.findOne(parseInt(id));
