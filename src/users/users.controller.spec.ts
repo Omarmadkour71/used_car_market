@@ -13,7 +13,9 @@ describe('UsersController', () => {
 
   beforeEach(async () => {
     fakeAuthService = {
-      // signin: () => {},
+      signin: (email: string, password: string) => {
+        return Promise.resolve({ id: 1, email, password });
+      },
       // signup: () => {},
     };
 
@@ -64,5 +66,16 @@ describe('UsersController', () => {
   it('findUser throws an error if no id is found', async () => {
     fakeUsersService.findOne = () => null;
     await expect(controller.findUser('12')).rejects.toThrow(NotFoundException);
+  });
+
+  it('signin updates session and returns user', async () => {
+    const session = { userId: 12 };
+    const user = await controller.signin(
+      { email: 'asdf@asdf.com', password: '1234' },
+      session,
+    );
+    expect(user.id).toEqual(1);
+    expect(user.email).toEqual('asdf@asdf.com');
+    expect(session.userId).toEqual(1);
   });
 });
